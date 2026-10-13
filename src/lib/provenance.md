@@ -1,13 +1,13 @@
-# Tavi Runtime Asset Provenance
+# Strop Runtime Asset Provenance
 
 **Status: EXPERIMENTAL.** The PRoot runtime below has passed on-device smoke tests
 (Termux environment, Android 16, aarch64) but has NOT been validated through the
-Tavi dev-client build on a real device. Do not mark production-ready until the
+Strop dev-client build on a real device. Do not mark production-ready until the
 EAS build passes the on-device test matrix in PLAN.md §4.
 
 ## PRoot binary (bundled in jniLibs — current)
 
-Shipped in `modules/tavi-bridge/android/src/main/jniLibs/arm64-v8a/`:
+Shipped in `modules/strop-bridge/android/src/main/jniLibs/arm64-v8a/`:
 `libproot.so` (sha256 `1545b85b…d717`), `libprootloader.so` (`cbdef0e6…6b551`),
 `libtalloc.so.2` (renamed from `libtalloc.so` to match libproot's NEEDED SONAME),
 `libandroid-shmem.so`. Source: Termux proot 5.1.107.96. `useLegacyPackaging = true`
@@ -35,7 +35,7 @@ proot 5.1.107.96 (`packages.termux.dev`, proot-me fork + Android patches, GPL,
 needs `libtalloc` + `libandroid-shmem`) works perfectly on the same device.
 
 **Decision for implementation:** download flow verifies SHA256 before use, but the
-default source should be considered **suspect until proven on-device via the Tavi
+default source should be considered **suspect until proven on-device via the Strop
 dev build**. If it fails, the follow-up is a CI build of
 https://github.com/termux/proot (statically linked or with talloc/shmem bundled).
 The ysdragon binary may still pass inside the app's own process context (Termux's
@@ -117,4 +117,4 @@ Notes from proot-distro source (`proot_cmd.py`, Termux 5.3+):
 | Workspace node script execution | ✅ PASS |
 | **ysdragon proot v5.4.0 execution** | ❌ **KILLED BY SIGSYS** — do not ship |
 | **Termux proot 5.1.107.96 packaged as jniLibs** | ✅ PASS (Termux-patched, Android seccomp compatible) |
-| **Tavi app dev-build end-to-end** | ⏳ Pending EAS build + install |
+| **Strop app dev-build end-to-end** | ⏳ Pending EAS build + install |

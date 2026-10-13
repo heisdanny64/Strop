@@ -1,4 +1,4 @@
-package expo.modules.tavibridge
+package expo.modules.stropbridge
 
 import android.content.Context
 import android.net.ConnectivityManager

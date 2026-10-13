@@ -1,5 +1,5 @@
 /**
- * Expo config plugin that injects Tavi's native bridge code into the
+ * Expo config plugin that injects Strop's native bridge code into the
  * Android project during prebuild (CNG-safe — no manual android/ edits).
  */
 const {
@@ -9,7 +9,7 @@ const {
   createRunOncePlugin,
 } = require('expo/config-plugins');
 
-const withTaviGradleProperties = (config) =>
+const withStropGradleProperties = (config) =>
   withGradleProperties(config, (config) => {
     config.modResults = config.modResults.filter(
       (item) => item.key !== 'android.useAndroidX' && item.key !== 'android.enableJetifier'
@@ -26,7 +26,7 @@ const withTaviGradleProperties = (config) =>
     return config;
   });
 
-const withTaviManifest = (config) =>
+const withStropManifest = (config) =>
   withAndroidManifest(config, (config) => {
     const application = config.modResults.manifest.application[0];
     application.$['android:allowBackup'] = 'false';
@@ -41,19 +41,19 @@ const withTaviManifest = (config) =>
  * env-var-driven values when CI secrets are present, falling back to the
  * stock debug keystore for local development.
  */
-const withTaviSigning = (config) =>
+const withStropSigning = (config) =>
   withAppBuildGradle(config, (config) => {
-    if (!config.modResults.contents.includes('TAVI_SIGNING')) {
+    if (!config.modResults.contents.includes('STROP_SIGNING')) {
       config.modResults.contents = config.modResults.contents.replace(
         /signingConfigs \{\s*debug \{\s*storeFile file\('debug\.keystore'\)\s*storePassword 'android'\s*keyAlias 'androiddebugkey'\s*keyPassword 'android'\s*\}\s*\}/,
-        `// TAVI_SIGNING: shared keystore across CI + local builds
+        `// STROP_SIGNING: shared keystore across CI + local builds
         signingConfigs {
             debug {
-                if (System.getenv('TAVI_KEYSTORE_PATH') != null) {
-                    storeFile file(System.getenv('TAVI_KEYSTORE_PATH'))
-                    storePassword System.getenv('TAVI_KEYSTORE_PASSWORD')
-                    keyAlias System.getenv('TAVI_KEY_ALIAS')
-                    keyPassword System.getenv('TAVI_KEY_PASSWORD')
+                if (System.getenv('STROP_KEYSTORE_PATH') != null) {
+                    storeFile file(System.getenv('STROP_KEYSTORE_PATH'))
+                    storePassword System.getenv('STROP_KEYSTORE_PASSWORD')
+                    keyAlias System.getenv('STROP_KEY_ALIAS')
+                    keyPassword System.getenv('STROP_KEY_PASSWORD')
                 } else {
                     storeFile file('debug.keystore')
                     storePassword 'android'
@@ -68,7 +68,7 @@ const withTaviSigning = (config) =>
   });
 
 module.exports = createRunOncePlugin(
-  (config) => withTaviSigning(withTaviManifest(withTaviGradleProperties(config))),
-  'withTaviBridge',
+  (config) => withStropSigning(withStropManifest(withStropGradleProperties(config))),
+  'withStropBridge',
   '1.0.0'
 );

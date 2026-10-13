@@ -19,9 +19,9 @@ export function useProot() {
 
   const refresh = useCallback(() => {
     if (Platform.OS !== 'android') return;
-    import('../../modules/tavi-bridge')
-      .then(({ default: TaviBridge }) => {
-        setStatus(TaviBridge.getProotStatus());
+    import('../../modules/strop-bridge')
+      .then(({ default: StropBridge }) => {
+        setStatus(StropBridge.getProotStatus());
       })
       .catch(() => setStatus({ running: false, sessions: [] }));
   }, []);
@@ -54,8 +54,8 @@ export function useProot() {
     setBootstrapProgress([]);
     setError(null); // Clear stale errors
     try {
-      const { default: TaviBridge } = await import('../../modules/tavi-bridge');
-      await TaviBridge.bootstrap();
+      const { default: StropBridge } = await import('../../modules/strop-bridge');
+      await StropBridge.bootstrap();
       return true;
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -68,8 +68,8 @@ export function useProot() {
   const start = useCallback(
     async (sessionName?: string) => {
       if (Platform.OS !== 'android') return null;
-      const { default: TaviBridge } = await import('../../modules/tavi-bridge');
-      const result = await TaviBridge.startProot(sessionName ?? null);
+      const { default: StropBridge } = await import('../../modules/strop-bridge');
+      const result = await StropBridge.startProot(sessionName ?? null);
       refresh();
       return result;
     },
@@ -78,9 +78,9 @@ export function useProot() {
 
   const stop = useCallback(() => {
     if (Platform.OS !== 'android') return;
-    import('../../modules/tavi-bridge')
-      .then(({ default: TaviBridge }) => {
-        TaviBridge.stopProot();
+    import('../../modules/strop-bridge')
+      .then(({ default: StropBridge }) => {
+        StropBridge.stopProot();
         refresh();
       });
   }, [refresh]);
@@ -92,16 +92,16 @@ export function useProot() {
     let sub2: { remove: () => void } | null = null;
     let sub3: { remove: () => void } | null = null;
     let cancelled = false;
-    import('../../modules/tavi-bridge')
-      .then(({ default: TaviBridge }) => {
+    import('../../modules/strop-bridge')
+      .then(({ default: StropBridge }) => {
         if (cancelled) return;
-        sub1 = TaviBridge.addListener?.('onBootstrapOutput', (evt: { line: string }) => {
+        sub1 = StropBridge.addListener?.('onBootstrapOutput', (evt: { line: string }) => {
           setBootstrapProgress((prev) => [...prev.slice(-500), evt.line]);
         }) ?? null;
-        sub2 = TaviBridge.addListener?.('onProotStarted', () => {
+        sub2 = StropBridge.addListener?.('onProotStarted', () => {
           refresh();
         }) ?? null;
-        sub3 = TaviBridge.addListener?.('onProotStopped', () => {
+        sub3 = StropBridge.addListener?.('onProotStopped', () => {
           refresh();
         }) ?? null;
       })

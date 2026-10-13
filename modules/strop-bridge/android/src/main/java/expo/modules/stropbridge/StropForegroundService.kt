@@ -1,4 +1,4 @@
-package expo.modules.tavibridge
+package expo.modules.stropbridge
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,20 +12,20 @@ import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
-class TaviForegroundService : Service() {
+class StropForegroundService : Service() {
   companion object {
-    const val CHANNEL_ID = "tavi-proot"
+    const val CHANNEL_ID = "strop-proot"
     const val NOTIFICATION_ID = 1001
-    const val KEY_MESSAGE = "expo.modules.tavibridge.EXTRA_MESSAGE"
+    const val KEY_MESSAGE = "expo.modules.stropbridge.EXTRA_MESSAGE"
 
     fun start(context: Context, message: String) {
-      val intent = Intent(context, TaviForegroundService::class.java)
+      val intent = Intent(context, StropForegroundService::class.java)
         .putExtra(KEY_MESSAGE, message)
       context.startForegroundService(intent)
     }
 
     fun stop(context: Context) {
-      context.stopService(Intent(context, TaviForegroundService::class.java))
+      context.stopService(Intent(context, StropForegroundService::class.java))
     }
   }
 

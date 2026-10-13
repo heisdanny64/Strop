@@ -6,7 +6,7 @@ function uriToPath(uri: string): string {
 }
 
 /**
- * Pinned download sources for the Tavi Linux runtime.
+ * Pinned download sources for the Strop Linux runtime.
  * EXPERIMENTAL — see provenance.md for verification status and risks.
  */
 export const ASSETS = {
@@ -41,11 +41,11 @@ async function downloadIfMissing(
   onProgress: ProgressFn,
   stage: SetupStage
 ): Promise<File> {
-  const { default: TaviBridge } = await import('../../modules/tavi-bridge');
+  const { default: StropBridge } = await import('../../modules/strop-bridge');
   const dest = new File(destDir, asset.fileName);
   if (dest.exists) {
     onProgress({ stage: 'verifying', message: `Verifying ${asset.fileName}` });
-    const hash = TaviBridge.sha256(uriToPath(dest.uri));
+    const hash = StropBridge.sha256(uriToPath(dest.uri));
     if (hash.toLowerCase() === asset.sha256) return dest;
     // Corrupt or stale file — delete and re-download
     dest.delete();
@@ -65,7 +65,7 @@ async function downloadIfMissing(
     const result = await task.downloadAsync();
     if (!result) throw new Error(`Download failed or cancelled: ${asset.fileName}`);
     onProgress({ stage: 'verifying', message: `Verifying ${asset.fileName}` });
-    const actual = TaviBridge.sha256(uriToPath(dest.uri));
+    const actual = StropBridge.sha256(uriToPath(dest.uri));
     if (actual.toLowerCase() !== asset.sha256) {
       dest.delete();
       throw new Error(
@@ -94,7 +94,7 @@ export async function setupEnvironment(onProgress: ProgressFn = () => {}): Promi
   }
 
   const promise = (async () => {
-    const { default: TaviBridge } = await import('../../modules/tavi-bridge');
+    const { default: StropBridge } = await import('../../modules/strop-bridge');
 
     const cache = new Directory(Paths.cache, 'tavi-setup');
     cache.create({ idempotent: true });
@@ -107,7 +107,7 @@ export async function setupEnvironment(onProgress: ProgressFn = () => {}): Promi
     );
 
     onProgress({ stage: 'extracting', message: 'Extracting rootfs (may take several minutes)' });
-    await TaviBridge.initialize(uriToPath(rootfsFile.uri), ASSETS.rootfs.sha256, ASSETS.rootfs.version);
+    await StropBridge.initialize(uriToPath(rootfsFile.uri), ASSETS.rootfs.sha256, ASSETS.rootfs.version);
     // Clean up tarball after successful extraction
     try {
       rootfsFile.delete();
@@ -127,8 +127,8 @@ export async function setupEnvironment(onProgress: ProgressFn = () => {}): Promi
 
 export async function isEnvironmentReady(): Promise<boolean> {
   try {
-    const { default: TaviBridge } = await import('../../modules/tavi-bridge');
-    return TaviBridge.isInitialized();
+    const { default: StropBridge } = await import('../../modules/strop-bridge');
+    return StropBridge.isInitialized();
   } catch {
     return false;
   }

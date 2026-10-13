@@ -20,7 +20,7 @@ type BootstrapOutput = {
   line: string;
 };
 
-declare class TaviBridgeModule extends EventEmitter<TaviBridgeEvents> {
+declare class StropBridgeModule extends EventEmitter<StropBridgeEvents> {
   sha256(path: string): string;
   initialize(rootfsPath: string, rootfsSha256: string, rootfsVersion: string): Promise<boolean>;
   bootstrap(): Promise<boolean>;
@@ -34,7 +34,7 @@ declare class TaviBridgeModule extends EventEmitter<TaviBridgeEvents> {
   listDir(path: string): string[];
 }
 
-type TaviBridgeEvents = {
+type StropBridgeEvents = {
   onBootstrapOutput: (data: { line: string }) => void;
   onProotStarted: (data: { sessionName: string; pid: number }) => void;
   onProotStopped: (data: { sessionName: string; exitCode: number }) => void;
@@ -43,4 +43,4 @@ type TaviBridgeEvents = {
   onSessionExited: (data: { sessionName: string; exitCode: number }) => void;
 } & Record<string, (data: any) => void>;
 
-export default requireNativeModule<TaviBridgeModule>('TaviBridge');
+export default requireNativeModule<StropBridgeModule>('StropBridge');

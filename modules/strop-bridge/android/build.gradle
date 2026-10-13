@@ -3,11 +3,11 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'expo.modules.tavibridge'
+group = 'expo.modules.stropbridge'
 version = '1.0.0'
 
 android {
-  namespace "expo.modules.tavibridge"
+  namespace "expo.modules.stropbridge"
   defaultConfig {
     versionCode 1
     versionName "1.0.0"

@@ -1,4 +1,4 @@
-package expo.modules.tavibridge
+package expo.modules.stropbridge
 
 import android.content.Context
 import android.util.Log
@@ -10,9 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
-private const val TAG = "TaviBridge"
+private const val TAG = "StropBridge"
 
-class TaviBridgeModule : Module() {
+class StropBridgeModule : Module() {
   private val prootManager by lazy { ProotManager(appContext.reactContext!!) }
   private val processes = ConcurrentHashMap<String, Process>()
 
@@ -27,7 +27,7 @@ class TaviBridgeModule : Module() {
   }
 
   override fun definition() = ModuleDefinition {
-    Name("TaviBridge")
+    Name("StropBridge")
 
     Events(
       "onProotStarted",
@@ -79,7 +79,7 @@ class TaviBridgeModule : Module() {
         throw CodedException("ERR_NOT_INITIALIZED", "Call initialize() first", null)
       }
       val ctx = appContext.reactContext ?: throw CodedException("ERR_NO_CONTEXT", "React context lost", null)
-      TaviForegroundService.start(ctx, "Bootstrapping Linux environment...")
+      StropForegroundService.start(ctx, "Bootstrapping Linux environment...")
 
       val ok = prootManager.bootstrap { line ->
         sendEvent("onBootstrapOutput", mapOf("line" to line))
@@ -116,7 +116,7 @@ class TaviBridgeModule : Module() {
         .apply { environment().putAll(env) }
         .start()
       processes[key] = proc
-      TaviForegroundService.start(ctx, "Linux session: ${sessionName ?: "default"}")
+      StropForegroundService.start(ctx, "Linux session: ${sessionName ?: "default"}")
 
       sendEvent(
         "onProotStarted",
@@ -133,7 +133,7 @@ class TaviBridgeModule : Module() {
           )
           val ctx2 = appContext.reactContext
           if (ctx2 != null && processes.isEmpty()) {
-            TaviForegroundService.stop(ctx2)
+            StropForegroundService.stop(ctx2)
           }
         } catch (e: InterruptedException) { /* destroyed */ }
       }.start()
@@ -144,7 +144,7 @@ class TaviBridgeModule : Module() {
     Function("stopProot") {
       processes.values.forEach { it.destroy() }
       processes.clear()
-      appContext.reactContext?.let { TaviForegroundService.stop(it) }
+      appContext.reactContext?.let { StropForegroundService.stop(it) }
       true
     }
 

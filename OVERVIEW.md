@@ -2,7 +2,7 @@
 ## Architecture & Code Structure
 
 ### Overview
-Tavi is a mobile-first development environment combining an IDE, integrated terminal, built-in preview, and AI agent built with Expo and React Native.
+Strop is a mobile-first development environment combining an IDE, integrated terminal, built-in preview, and AI agent built with Expo and React Native.
 
 - **Routing & Screens (`src/app/`)**: File-based routing using Expo Router. All screens live here; `_layout.tsx` files define navigators. Do not place business logic or helper components here.
 - **Components (`src/components/`)**: Shared UI components and platform-specific implementations (`.web.tsx` for web overrides).

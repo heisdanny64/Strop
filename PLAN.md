@@ -1,4 +1,4 @@
-# Tavi — Implementation Plan
+# Strop — Implementation Plan
 
 **Product:** Mobile-first development environment combining a full IDE, integrated Linux terminal, built-in preview, and configurable AI coding agent in a single native-feel Android app.
 
@@ -28,7 +28,7 @@
 - `react-native-webview`: Chrome-free local rendering for CodeMirror, xterm.js, and web preview
 - `react-native-keychain` / `expo-secure-store`: Encrypted storage for API keys and GitHub OAuth tokens
 - `expo-file-system`: Handling asset bundles, downloads, and cache extraction
-- Custom Android Native Module (`TaviBridge`): Managing PRoot background process, Foreground Service notification, and socket bridging
+- Custom Android Native Module (`StropBridge`): Managing PRoot background process, Foreground Service notification, and socket bridging
 
 ### PRoot & Linux Environment
 - `proot`: Emulated chroot execution on unrooted Android
@@ -53,7 +53,7 @@
 ### Phase 1: Native Foundation & PRoot Integration
 - [ ] Configure custom Expo dev client with Android native permissions:
   - `FOREGROUND_SERVICE`, `INTERNET`, `POST_NOTIFICATIONS`, `READ/WRITE_EXTERNAL_STORAGE` (scoped).
-- [ ] Implement `TaviForegroundService` in Android to keep PRoot alive when navigating or backgrounded.
+- [ ] Implement `StropForegroundService` in Android to keep PRoot alive when navigating or backgrounded.
 - [ ] Integrate PRoot binary and initial rootfs extraction scripts to app-internal storage (`context.getFilesDir()`).
 - [ ] Setup socket communication between React Native and the PRoot bash environment.
 - [ ] Test command execution and verify `tmux` session persistence.
@@ -99,7 +99,7 @@
     - Create New (modal: name, description, auto-generated editable slug).
     - Import from GitHub (OAuth / Public repo URL clone).
     - Import from Device (tar/zip archive picker and extract).
-    - Ask Tavi (AI-guided project scaffolding).
+    - Ask Strop (AI-guided project scaffolding).
 
 ### Phase 5: Workspace IDE
 - [ ] **Workspace Layout:**

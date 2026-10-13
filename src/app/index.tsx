@@ -36,8 +36,8 @@ export default function HomeScreen() {
     setExecuting(true);
     setExecResult(null);
     try {
-      const { default: TaviBridge } = await import('../../modules/tavi-bridge');
-      const res = await TaviBridge.execCommand(cmd, '/root');
+      const { default: StropBridge } = await import('../../modules/strop-bridge');
+      const res = await StropBridge.execCommand(cmd, '/root');
       const out = [res.stdout, res.stderr].filter(Boolean).join('\n').trim();
       setExecResult(
         res.exitCode === 0
@@ -65,7 +65,7 @@ export default function HomeScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <ThemedText type="subtitle">Tavi Runtime</ThemedText>
+          <ThemedText type="subtitle">Strop Runtime</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             EXPERIMENTAL — PRoot on-device test dashboard
           </ThemedText>

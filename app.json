@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Tavi",
-    "slug": "Tavi",
+    "name": "Strop",
+    "slug": "Strop",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "tavi",
+    "scheme": "strop",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
@@ -42,7 +42,7 @@
           "imageWidth": 76
         }
       ],
-      "./plugins/withTaviBridge"
+      ./plugins/withStropBridge
     ],
     "experiments": {
       "typedRoutes": true,

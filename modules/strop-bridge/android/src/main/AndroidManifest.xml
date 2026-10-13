@@ -5,7 +5,7 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
   <application>
     <service
-      android:name="expo.modules.tavibridge.TaviForegroundService"
+      android:name="expo.modules.stropbridge.StropForegroundService"
       android:exported="false"
       android:foregroundServiceType="dataSync" />
   </application>
