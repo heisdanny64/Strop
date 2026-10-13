@@ -2,6 +2,7 @@ package expo.modules.tavibridge
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.os.Process
 import android.system.Os
 import android.util.Log
 import java.io.BufferedInputStream
@@ -425,17 +426,20 @@ class ProotManager(private val context: Context) {
   }
 
   fun buildProotCommand(
-  sessionName: String?
+  sessionName: String?,
+  fakeRoot: Boolean = true
 ): MutableList<String> {
+    // tmux rejects clients whose kernel peer UID differs from the server's getuid().
+    // A session server must report the app's real UID; fake root would break that check.
+    val uid = Process.myUid()
+    val changeId = if (fakeRoot) "--change-id=0:0" else "--change-id=$uid:$uid"
     val cmd = mutableListOf(
       prootBinary.absolutePath,
       "--kill-on-exit",
       "--link2symlink",
       "--sysvipc",
       "--kernel-release=${getKernelRelease()}",
-      // -0 is an alias of --change-id=0:0; passing both triggers
-      // "option -i/-0/-S was already specified" warnings
-      "--change-id=0:0",
+      changeId,
       "-L",
       "-r", rootfsDir.absolutePath,
       // Set guest working directory so PRoot doesn't try to enter the bound host CWD

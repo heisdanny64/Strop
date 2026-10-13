@@ -109,7 +109,7 @@ class TaviBridgeModule : Module() {
       if (processes.containsKey(key)) {
         return@Coroutine mapOf("success" to true, "pid" to processes[key]?.getPid())
       }
-      val cmd = prootManager.buildProotCommand(sessionName)
+      val cmd = prootManager.buildProotCommand(sessionName, fakeRoot = false)
       val env = prootManager.buildEnv() + prootManager.buildProotEnv()
       val proc = ProcessBuilder(cmd)
         .directory(prootManager.filesRoot)

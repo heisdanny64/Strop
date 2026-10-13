@@ -1,19 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, ToastAndroid } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  ToastAndroid,
+  useColorScheme,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useProot } from '@/hooks/useProot';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Colors, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function HomeScreen() {
   const proot = useProot();
   const [execResult, setExecResult] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [command, setCommand] = useState('');
   const logRef = useRef<ScrollView>(null);
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const palette = Colors[scheme];
 
   useEffect(() => {
     if (logRef.current && proot.bootstrapProgress.length > 0) {
@@ -150,6 +161,23 @@ export default function HomeScreen() {
                 )
               }
             />
+            <TextInput
+              value={command}
+              onChangeText={setCommand}
+              placeholder="Custom command, e.g. tmux -S /tmp/x.sock ls"
+              placeholderTextColor={palette.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!executing && ready}
+              onSubmitEditing={() => command.trim() && runProbe(command.trim(), 'custom')}
+              returnKeyType="send"
+              style={[styles.input, { color: palette.text, backgroundColor: palette.backgroundSelected }]}
+            />
+            <TestButton
+              label="Run command"
+              disabled={executing || !ready || !command.trim()}
+              onPress={() => runProbe(command.trim(), 'custom')}
+            />
             {executing && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
             {execResult && (
               <>
@@ -252,6 +280,13 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  input: {
+    fontFamily: Fonts?.mono,
+    fontSize: 13,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Spacing.one,
   },
   error: {
     color: '#e5484d',
