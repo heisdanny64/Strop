@@ -162,7 +162,7 @@ export default function HomeScreen() {
               disabled={executing || !ready}
               onPress={() =>
                 runProbe(
-                  'tmux -S /tmp/tmux-default.sock ls 2>&1 || echo "no sessions"',
+                  'tmux -S /tmp/tmux-main.sock ls 2>&1 || echo "no sessions"',
                   'tmux ls'
                 )
               }

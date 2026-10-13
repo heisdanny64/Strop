@@ -11,7 +11,7 @@ function uriToPath(uri: string): string {
 
 /**
  * Pinned download sources for the Strop Linux runtime.
- * EXPERIMENTAL — see provenance.md for verification status and risks.
+ * EXPERIMENTAL — see docs/provenance.md for verification status and risks.
  */
 export const ASSETS = {
   rootfs: {
