@@ -42,7 +42,7 @@
           "imageWidth": 76
         }
       ],
-      ./plugins/withStropBridge
+      "./plugins/withStropBridge"
     ],
     "experiments": {
       "typedRoutes": true,
