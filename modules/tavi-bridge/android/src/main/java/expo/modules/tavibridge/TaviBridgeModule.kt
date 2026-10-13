@@ -165,7 +165,7 @@ class TaviBridgeModule : Module() {
         append(cmd)
       }
       val env = prootManager.buildEnv() + prootManager.buildProotEnv()
-      val pb = ProcessBuilder(prootManager.buildProotCommand(null, includeDefaultShell = false))
+      val pb = ProcessBuilder(prootManager.buildProotCommand(null))
         .apply { environment().putAll(env) }
         .redirectErrorStream(true)
       val proc = pb.start()

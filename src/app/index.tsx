@@ -122,7 +122,7 @@ export default function HomeScreen() {
                     </ThemedText>
                   ))}
                 </ScrollView>
-                <TestButton label={copied ? 'Copied!' : 'Copy Logs'} onPress={copyLogs} />
+                <TestButton label={copied ? 'Copied!' : 'Copy Logs'} onPress={() => copyLogs()} />
               </>
             )}
           </ThemedView>

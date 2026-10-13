@@ -390,7 +390,8 @@ class ProotManager(private val context: Context) {
       npm --version
     """.trimIndent()
 
-    val cmd = buildProotCommand(null, includeDefaultShell = false).toMutableList()
+    val cmd = buildProotCommand(null).toMutableList()
+    cmd.removeAt(cmd.size - 1) // drop trailing bash; bootstrap appends its own /bin/bash -c
     cmd.add("/bin/bash")
     cmd.add("-c")
     cmd.add(bootstrapScript)
@@ -424,8 +425,7 @@ class ProotManager(private val context: Context) {
   }
 
   fun buildProotCommand(
-  sessionName: String?,
-  includeDefaultShell: Boolean = true
+  sessionName: String?
 ): MutableList<String> {
     val cmd = mutableListOf(
       prootBinary.absolutePath,
@@ -522,7 +522,10 @@ class ProotManager(private val context: Context) {
       cmd.add("/bin/sh")
       cmd.add("-c")
       cmd.add("tmux new-session -d -s '$safeName' 2>/dev/null; exec bash")
-    } else if (includeDefaultShell) {
+    } else {
+      // stdin-driven callers (execCommand) need a live shell; callers that
+      // append their own /bin/bash -c (bootstrap) ignore this trailing bash.
+      // Without a trailing program, env -i ... would just print the env.
       cmd.add("bash")
     }
     return cmd
