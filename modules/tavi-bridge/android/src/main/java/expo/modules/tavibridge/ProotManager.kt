@@ -518,10 +518,15 @@ class ProotManager(private val context: Context) {
       // Detached tmux session: new-session -d starts (or reuses) the server and
       // returns; the trailing bash keeps the proot process alive so the tmux
       // server (--kill-on-exit) survives for later attach/exec.
+      // Explicit -S socket path: the default /tmp/tmux-<uid>/default socket does a
+      // kernel-level peer-credential check that fails when the faked-root (proot
+      // --change-id=0:0) server and a separate proot instance's client compare
+      // getuid()=0 against the kernel-reported real app uid -> "access not allowed".
+      // A shared explicit socket under /tmp owned by the server process avoids that.
       val safeName = sessionName.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
       cmd.add("/bin/sh")
       cmd.add("-c")
-      cmd.add("tmux new-session -d -s '$safeName' 2>/dev/null; exec bash")
+      cmd.add("tmux -S /tmp/tmux-default.sock new-session -d -s '$safeName'; exec bash")
     } else {
       // stdin-driven callers (execCommand) need a live shell; callers that
       // append their own /bin/bash -c (bootstrap) ignore this trailing bash.

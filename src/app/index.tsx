@@ -143,7 +143,12 @@ export default function HomeScreen() {
             <TestButton
               label="tmux list-sessions"
               disabled={executing || !ready}
-              onPress={() => runProbe('tmux ls 2>&1 || echo "no sessions"', 'tmux ls')}
+              onPress={() =>
+                runProbe(
+                  'tmux -S /tmp/tmux-default.sock ls 2>&1 || echo "no sessions"',
+                  'tmux ls'
+                )
+              }
             />
             {executing && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
             {execResult && (
