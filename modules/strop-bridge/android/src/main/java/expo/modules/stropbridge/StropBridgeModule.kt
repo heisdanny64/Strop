@@ -83,7 +83,7 @@ class StropBridgeModule : Module() {
       true
     }
 
-    AsyncFunction("bootstrap") Coroutine {
+    AsyncFunction("bootstrap") Coroutine<Boolean> {
       if (!prootManager.isInitialized) {
         throw CodedException("ERR_NOT_INITIALIZED", "Call initialize() first", null)
       }
