@@ -55,6 +55,7 @@ const withStropSigning = (config) =>
                     storePassword System.getenv('STROP_KEYSTORE_PASSWORD')
                     keyAlias System.getenv('STROP_KEY_ALIAS')
                     keyPassword System.getenv('STROP_KEY_PASSWORD')
+
                 } else {
                     storeFile file('debug.keystore')
                     storePassword 'android'

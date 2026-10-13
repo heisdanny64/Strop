@@ -26,7 +26,7 @@ jobs:
           cache: npm
 
       - name: Decode signing keystore
-        run: echo "${{ secrets.STROP_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/strop.p12"
+        run: echo "${{ secrets.TAVI_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/tavi.jks"
 
       - name: Install dependencies
         run: npm ci
@@ -39,10 +39,10 @@ jobs:
 
       - name: Build APK
         env:
-          STROP_KEYSTORE_PATH: ${{ runner.temp }}/strop.p12
-          STROP_KEYSTORE_PASSWORD: ${{ secrets.TAVI_KEYSTORE_PASSWORD }}
-          STROP_KEY_ALIAS: ${{ secrets.TAVI_KEY_ALIAS }}
-          STROP_KEY_PASSWORD: ${{ secrets.TAVI_KEY_PASSWORD }}
+          STROP_KEYSTORE_PATH: ${{ runner.temp }}/tavi.jks
+          TAVI_KEYSTORE_PASSWORD: ${{ secrets.TAVI_KEYSTORE_PASSWORD }}
+          TAVI_KEY_ALIAS: ${{ secrets.TAVI_KEY_ALIAS }}
+          TAVI_KEY_PASSWORD: ${{ secrets.TAVI_KEY_PASSWORD }}
         run: cd android && ./gradlew assembleDebug
 
       - name: Upload APK artifact
