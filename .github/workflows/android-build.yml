@@ -1,0 +1,53 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Decode signing keystore
+        run: echo "${{ secrets.TAVI_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/tavi.jks"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Install dependencies (post-prebuild)
+        run: npm ci
+
+      - name: Build APK
+        env:
+          TAVI_KEYSTORE_PATH: ${{ runner.temp }}/tavi.jks
+          TAVI_KEYSTORE_PASSWORD: ${{ secrets.TAVI_KEYSTORE_PASSWORD }}
+          TAVI_KEY_ALIAS: ${{ secrets.TAVI_KEY_ALIAS }}
+          TAVI_KEY_PASSWORD: ${{ secrets.TAVI_KEY_PASSWORD }}
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tavi-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
