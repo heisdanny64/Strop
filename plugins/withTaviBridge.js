@@ -15,7 +15,14 @@ const withTaviGradleProperties = (config) =>
       (item) => item.key !== 'android.useAndroidX' && item.key !== 'android.enableJetifier'
     );
     config.modResults.push({ type: 'property', key: 'android.useAndroidX', value: 'true' });
-    config.modResults.push({ type: 'property', key: 'android.enableJetifier', value: 'true' });
+    // Jetifier is legacy (pre-AndroidX library support) and OOMs CI runners on
+    // large AAR transforms; RN 0.86 doesn't need it.
+    config.modResults.push({ type: 'property', key: 'android.enableJetifier', value: 'false' });
+    config.modResults.push({
+      type: 'property',
+      key: 'org.gradle.jvmargs',
+      value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m',
+    });
     return config;
   });
 
