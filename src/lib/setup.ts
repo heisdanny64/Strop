@@ -2,7 +2,11 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 function uriToPath(uri: string): string {
   const withoutPrefix = uri.startsWith('file://') ? uri.slice('file://'.length) : uri;
-  return decodeURIComponent(withoutPrefix);
+  try {
+    return decodeURIComponent(withoutPrefix);
+  } catch {
+    return withoutPrefix;
+  }
 }
 
 /**

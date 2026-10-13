@@ -51,12 +51,12 @@
 ## 3. Phased Implementation Roadmap
 
 ### Phase 1: Native Foundation & PRoot Integration
-- [ ] Configure custom Expo dev client with Android native permissions:
-  - `FOREGROUND_SERVICE`, `INTERNET`, `POST_NOTIFICATIONS`, `READ/WRITE_EXTERNAL_STORAGE` (scoped).
-- [ ] Implement `StropForegroundService` in Android to keep PRoot alive when navigating or backgrounded.
-- [ ] Integrate PRoot binary and initial rootfs extraction scripts to app-internal storage (`context.getFilesDir()`).
-- [ ] Setup socket communication between React Native and the PRoot bash environment.
-- [ ] Test command execution and verify `tmux` session persistence.
+- [x] Configure custom Expo dev client with Android native permissions:
+  - `FOREGROUND_SERVICE`, `INTERNET`, `POST_NOTIFICATIONS`, `READ/WRITE_EXTERNAL_STORAGE` (scoped). *(Note: Scoped storage makes explicit READ/WRITE permissions unnecessary.)*
+- [x] Implement `StropForegroundService` in Android to keep PRoot alive when navigating or backgrounded.
+- [x] Integrate PRoot binary and initial rootfs extraction scripts to app-internal storage (`context.getFilesDir()`).
+- [x] Setup socket communication between React Native and the PRoot bash environment using per‑session tmux sockets and execCommand handling.
+- [x] Test command execution and verify `tmux` session persistence.
 
 ### Phase 2: WebViews & Editor/Terminal Infrastructure
 - [ ] Create pre-bundled, offline CodeMirror 6 build:
@@ -66,7 +66,7 @@
   - Horizontal scrollable accessory bar: `Tab`, `Ctrl`, `Esc`, `{`, `}`, `[`, `]`, `(`, `)`, `;`, `"`, `'`, `/`, `\`, `|`, `~`, arrow keys.
   - Keyboard focus and insertion event dispatch to CodeMirror.
 - [ ] Create pre-bundled, offline xterm.js build:
-  - Two-way WebSocket/bridge connection to PRoot's `tmux` instance.
+  - Two‑way WebSocket/bridge connection to PRoot's `tmux` instance.
   - Support project-specific terminal sessions and the Global Terminal session.
 - [ ] Implement **Preview WebView**:
   - URL enforcement restricted to `http://localhost:*` and `http://127.0.0.1:*`.
@@ -82,34 +82,34 @@
   - API Key & Model inputs; "Find Models" drawer and manual entry.
   - "Skip for now" link leading directly to installation.
 - [ ] **Resource Installation Screen:**
-  - Extraction of pre-bundled rootfs and Core Pack.
+  - Extraction of pre‑bundled rootfs and Core Pack.
   - Asynchronous download and installation of selected optional toolchains.
-  - Step-by-step checklist and visual progress bar.
+  - Step‑by‑step checklist and visual progress bar.
 - [ ] Flag persistence (`onboarding_completed: true`) to bypass onboarding on subsequent launches.
 
 ### Phase 4: Navigation Hub & Project Management
 - [ ] **Home Screen:**
   - Header with Settings icon.
   - Destination tiles: Projects, Global Terminal, AI Agent Chat.
-  - Recent Projects list (top 2-3 most recently edited).
+  - Recent Projects list (top 2‑3 most recently edited).
 - [ ] **Projects Screen:**
   - Searchable list of projects located in `/workspace/`.
-  - Project Cards displaying name, description, path, and 3-dot menu (Rename, Export, Delete).
+  - Project Cards displaying name, description, path, and 3‑dot menu (Rename, Export, Delete).
   - Floating Action Button with expandable menu:
     - Create New (modal: name, description, auto-generated editable slug).
     - Import from GitHub (OAuth / Public repo URL clone).
     - Import from Device (tar/zip archive picker and extract).
-    - Ask Strop (AI-guided project scaffolding).
+    - Ask Strop (AI‑guided project scaffolding).
 
 ### Phase 5: Workspace IDE
 - [ ] **Workspace Layout:**
   - Header: Back button (to Projects), Title, Action icons (Agent, Terminal, Preview).
-  - File Explorer drawer (bottom-left floating trigger or key strip integration).
-  - Multi-tab file manager for CodeMirror editor.
+  - File Explorer drawer (bottom‑left floating trigger or key strip integration).
+  - Multi‑tab file manager for CodeMirror editor.
 - [ ] **Floating / Minimizable Agent Overlay:**
-  - Top-right collapsible panel.
+  - Top‑right collapsible panel.
   - State controls: Minimize (persists task), Maximize (full screen), Close (terminates session).
-- [ ] **Full-Screen Terminal View:**
+- [ ] **Full‑Screen Terminal View:**
   - Attached to the active project's `tmux` session (`/workspace/<slug>`).
 - [ ] **Localhost Preview Drawer/Modal:**
   - Configurable port input (e.g. 3000, 5173, 8080) with reload and back/forward navigation controls.
@@ -138,3 +138,5 @@
 3. **Terminal PTY & tmux:** Confirm ANSI color support, resize events (`fit-addon`), and session reconnection after navigating between tabs.
 4. **Agent File & Tool Actions:** Verify agent edits apply cleanly to `/workspace` files and reflect immediately in open editor buffers.
 5. **Localhost Preview:** Spin up a Vite/Node.js web server inside PRoot and verify instant rendering in the Preview WebView.
+
+---

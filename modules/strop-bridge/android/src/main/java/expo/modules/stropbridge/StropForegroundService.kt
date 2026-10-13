@@ -39,14 +39,18 @@ class StropForegroundService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    val message = intent?.getStringExtra(KEY_MESSAGE) ?: "Linux environment running"
+    if (intent == null) {
+      stopSelf()
+      return START_NOT_STICKY
+    }
+    val message = intent.getStringExtra(KEY_MESSAGE) ?: "Linux environment running"
 
     val notification = NotificationCompat.Builder(this, CHANNEL_ID)
       .setContentTitle("Strop")
       .setContentText(message)
       .setSmallIcon(android.R.drawable.stat_notify_sync)
       .setOngoing(true)
-      .setPriority(NotificationManagerCompat.IMPORTANCE_MIN)
+      .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
 
     // Called synchronously on the main thread — Android requires this
@@ -57,6 +61,10 @@ class StropForegroundService : Service() {
       startForeground(NOTIFICATION_ID, notification)
     }
     return START_STICKY
+  }
+
+  override fun onTimeout(type: Int, reason: Int) {
+    stopSelf()
   }
 
   override fun onBind(intent: Intent?): IBinder? = null

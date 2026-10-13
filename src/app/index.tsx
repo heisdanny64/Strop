@@ -27,6 +27,10 @@ export default function HomeScreen() {
   const palette = Colors[scheme];
 
   useEffect(() => {
+    // TODO: request POST_NOTIFICATIONS permission on Android when needed
+  }, []);
+
+  useEffect(() => {
     if (logRef.current && proot.bootstrapProgress.length > 0) {
       logRef.current.scrollToEnd({ animated: true });
     }
@@ -44,6 +48,8 @@ export default function HomeScreen() {
           ? out || '(no output)'
           : `${out || '(no output)'}\n\n[exit ${res.exitCode}]`
       );
+    } catch (e: any) {
+      setExecResult(e?.message ?? String(e));
     } finally {
       setExecuting(false);
     }
@@ -206,8 +212,7 @@ export default function HomeScreen() {
               onPress={() => proot.stop()}
             />
             <ThemedText type="small">
-              Foreground service starts with the session; notification permission not yet
-              requested at runtime.
+              Foreground service starts with the session; notification permission not yet requested at runtime.
             </ThemedText>
           </ThemedView>
         </ScrollView>
@@ -229,8 +234,9 @@ function TestButton({
     <Pressable onPress={onPress} disabled={disabled} hitSlop={4}>
       {({ pressed }) => (
         <ThemedView
-          type={disabled ? 'backgroundSelected' : 'backgroundSelected'}
-          style={[styles.button, pressed && styles.pressed]}>
+          type="backgroundSelected"
+          style={[styles.button, disabled && styles.disabled, pressed && styles.pressed]}
+        >
           <ThemedText type="smallBold" themeColor={disabled ? 'textSecondary' : 'text'}>
             {label}
           </ThemedText>
@@ -277,6 +283,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
     alignSelf: 'flex-start',
+  },
+  disabled: {
+    opacity: 0.4,
   },
   pressed: {
     opacity: 0.7,

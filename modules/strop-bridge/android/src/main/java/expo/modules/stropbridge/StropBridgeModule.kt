@@ -1,6 +1,7 @@
 package expo.modules.stropbridge
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.functions.Coroutine
@@ -9,18 +10,27 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 private const val TAG = "StropBridge"
 
 class StropBridgeModule : Module() {
-  private val prootManager by lazy { ProotManager(appContext.reactContext!!) }
+  private val prootManager by lazy {
+    val ctx = appContext.reactContext ?: throw IllegalStateException("React context not available")
+    ProotManager(ctx)
+  }
   private val processes = ConcurrentHashMap<String, Process>()
+  @Volatile private var destroyed = false
 
   private fun Process.getPid(): Int {
     return try {
-      val f = this.javaClass.getDeclaredField("pid")
-      f.isAccessible = true
-      f.getInt(this)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        this.pid().toInt()
+      } else {
+        val f = this.javaClass.getDeclaredField("pid")
+        f.isAccessible = true
+        f.getInt(this)
+      }
     } catch (e: Exception) {
       -1
     }
@@ -32,14 +42,12 @@ class StropBridgeModule : Module() {
     Events(
       "onProotStarted",
       "onProotStopped",
-      "onProotError",
-      "onSessionOutput",
-      "onSessionExited",
       "onBootstrapOutput"
     )
 
     OnDestroy {
-      processes.values.forEach { it.destroy() }
+      destroyed = true
+      processes.values.forEach { it.destroyForcibly() }
       processes.clear()
     }
 
@@ -59,12 +67,16 @@ class StropBridgeModule : Module() {
       Dispatchers.IO
       prootManager.ensureDirectories()
 
+      if (prootManager.isInitialized && !prootManager.isRootfsCurrent(rootfsVersion)) {
+        prootManager.clearBootstrapState()
+      }
+
       val extracted = prootManager.extractRootfs(rootfsPath, rootfsSha256)
       if (!extracted) {
         throw CodedException(
           "ERR_ROOTFS_EXTRACT",
           "Rootfs extraction failed (SHA256 verified OK before extraction). " +
-          "Check proot logs for details.",
+            "Check proot logs for details.",
           null
         )
       }
@@ -73,7 +85,7 @@ class StropBridgeModule : Module() {
       true
     }
 
-    AsyncFunction("bootstrap") Coroutine { ->
+    AsyncFunction("bootstrap") Coroutine {
       Dispatchers.IO
       if (!prootManager.isInitialized) {
         throw CodedException("ERR_NOT_INITIALIZED", "Call initialize() first", null)
@@ -81,56 +93,75 @@ class StropBridgeModule : Module() {
       val ctx = appContext.reactContext ?: throw CodedException("ERR_NO_CONTEXT", "React context lost", null)
       StropForegroundService.start(ctx, "Bootstrapping Linux environment...")
 
-      val ok = prootManager.bootstrap { line ->
-        sendEvent("onBootstrapOutput", mapOf("line" to line))
+      var ok = false
+      try {
+        ok = prootManager.bootstrap { line ->
+          sendEvent("onBootstrapOutput", mapOf("line" to line))
+        }
+        if (!ok) {
+          throw CodedException("ERR_BOOTSTRAP", "Bootstrap failed — see onBootstrapOutput events", null)
+        }
+        true
+      } finally {
+        if (!ok || processes.isEmpty()) {
+          StropForegroundService.stop(ctx)
+        }
       }
-      if (!ok) {
-        throw CodedException("ERR_BOOTSTRAP", "Bootstrap failed — see onBootstrapOutput events", null)
-      }
-      true
     }
 
-    Function("isInitialized") {
-      prootManager.isInitialized
-    }
+    Function("isInitialized") { prootManager.isInitialized }
 
     AsyncFunction("startProot") Coroutine { sessionName: String? ->
       Dispatchers.IO
       val ctx = appContext.reactContext ?: throw CodedException("ERR_NO_CONTEXT", "React context lost", null)
 
-      // Check initialization
       if (!prootManager.isInitialized) {
         throw CodedException("ERR_NOT_INITIALIZED", "Call initialize() first", null)
       }
 
       prootManager.ensureDirectories()
 
-      val key = sessionName ?: "default"
-      if (processes.containsKey(key)) {
-        return@Coroutine mapOf("success" to true, "pid" to processes[key]?.getPid())
+      val key = sessionName?.ifBlank { null } ?: "default"
+      val existing = processes[key]
+      if (existing != null && existing.isAlive) {
+        return@Coroutine mapOf("success" to true, "pid" to existing.getPid())
       }
-      val cmd = prootManager.buildProotCommand(sessionName, fakeRoot = false)
+
+      val cmd = prootManager.buildProotCommand(key, fakeRoot = false)
       val env = prootManager.buildEnv() + prootManager.buildProotEnv()
+      val logFile = File(prootManager.filesRoot, "session-$key.log")
       val proc = ProcessBuilder(cmd)
         .directory(prootManager.filesRoot)
         .apply { environment().putAll(env) }
+        .redirectErrorStream(true)
+        .redirectOutput(ProcessBuilder.Redirect.appendTo(logFile))
         .start()
-      processes[key] = proc
-      StropForegroundService.start(ctx, "Linux session: ${sessionName ?: "default"}")
 
-      sendEvent(
-        "onProotStarted",
-        mapOf("sessionName" to (sessionName ?: "default"), "pid" to proc.getPid())
-      )
+      val prev = processes.putIfAbsent(key, proc)
+      if (prev != null && prev.isAlive) {
+        proc.destroyForcibly()
+        return@Coroutine mapOf("success" to true, "pid" to prev.getPid())
+      }
+      processes[key] = proc
+      StropForegroundService.start(ctx, "Linux session: $key")
+
+      if (!destroyed) {
+        sendEvent(
+          "onProotStarted",
+          mapOf("sessionName" to key, "pid" to proc.getPid())
+        )
+      }
 
       Thread {
         try {
           val exitCode = proc.waitFor()
-          processes.remove(key)
-          sendEvent(
-            "onProotStopped",
-            mapOf("sessionName" to (sessionName ?: "default"), "exitCode" to exitCode)
-          )
+          processes.remove(key, proc)
+          if (!destroyed) {
+            sendEvent(
+              "onProotStopped",
+              mapOf("sessionName" to key, "exitCode" to exitCode)
+            )
+          }
           val ctx2 = appContext.reactContext
           if (ctx2 != null && processes.isEmpty()) {
             StropForegroundService.stop(ctx2)
@@ -142,7 +173,23 @@ class StropBridgeModule : Module() {
     }
 
     Function("stopProot") {
-      processes.values.forEach { it.destroy() }
+      for ((key, proc) in processes.entries) {
+        val socketPath = "/tmp/tmux-${key}.sock"
+        try {
+          val killCmd = prootManager.buildProotCommand(null, fakeRoot = false).toMutableList()
+          killCmd.removeAt(killCmd.size - 1)
+          killCmd.addAll(listOf("tmux", "-S", socketPath, "kill-server"))
+          val p = ProcessBuilder(killCmd)
+            .directory(prootManager.filesRoot)
+            .apply { environment().putAll(prootManager.buildEnv() + prootManager.buildProotEnv()) }
+            .start()
+          p.waitFor(5, TimeUnit.SECONDS)
+        } catch (_: Exception) {}
+        proc.destroy()
+        if (!proc.waitFor(3, TimeUnit.SECONDS)) {
+          proc.destroyForcibly()
+        }
+      }
       processes.clear()
       appContext.reactContext?.let { StropForegroundService.stop(it) }
       true
@@ -166,27 +213,41 @@ class StropBridgeModule : Module() {
       }
       val env = prootManager.buildEnv() + prootManager.buildProotEnv()
       val pb = ProcessBuilder(prootManager.buildProotCommand(null))
+        .directory(prootManager.filesRoot)
         .apply { environment().putAll(env) }
-        .redirectErrorStream(true)
-      val proc = pb.start()
+        .start()
       try {
-        proc.outputStream.use { it.write((wrapped + "\nexit\n").toByteArray()) }
-        val stdout = proc.inputStream.bufferedReader().readText()
-        val exitCode = proc.waitFor()
-        mapOf("stdout" to stdout, "stderr" to "", "exitCode" to exitCode)
+        pb.outputStream.use { it.write((wrapped + "\nexit\n").toByteArray()) }
+        val stdout = pb.inputStream.bufferedReader().use { it.readText() }
+        val stderr = pb.errorStream.bufferedReader().use { it.readText() }
+        val finished = pb.waitFor(30, TimeUnit.SECONDS)
+        if (!finished) {
+          pb.destroyForcibly()
+          throw CodedException("ERR_TIMEOUT", "Command timed out after 30s", null)
+        }
+        mapOf("stdout" to stdout, "stderr" to stderr, "exitCode" to pb.exitValue())
       } finally {
-        proc.destroy()
+        if (pb.isAlive) pb.destroyForcibly()
       }
     }
 
     Function("readFile") { path: String ->
       val f = File(prootManager.rootfsDir, path.removePrefix("/"))
-      if (!f.exists()) throw CodedException("ERR_NOENT", "File not found: $path", null)
+      val canonical = f.canonicalPath
+      if (!canonical.startsWith(prootManager.rootfsDir.canonicalPath + File.separator) && canonical != prootManager.rootfsDir.canonicalPath) {
+        throw CodedException("ERR_EACCES", "Path escapes rootfs: $path", null)
+      }
+      if (!f.exists() || !f.isFile) throw CodedException("ERR_NOENT", "File not found: $path", null)
+      if (f.length() > 5 * 1024 * 1024) throw CodedException("ERR_TOOBIG", "File too large: $path", null)
       f.readText()
     }
 
     Function("writeFile") { path: String, content: String ->
       val f = File(prootManager.rootfsDir, path.removePrefix("/"))
+      val canonical = f.canonicalPath
+      if (!canonical.startsWith(prootManager.rootfsDir.canonicalPath + File.separator) && canonical != prootManager.rootfsDir.canonicalPath) {
+        throw CodedException("ERR_EACCES", "Path escapes rootfs: $path", null)
+      }
       f.parentFile?.mkdirs()
       f.writeText(content)
       true
@@ -194,6 +255,10 @@ class StropBridgeModule : Module() {
 
     Function("listDir") { path: String ->
       val f = File(prootManager.rootfsDir, path.removePrefix("/"))
+      val canonical = f.canonicalPath
+      if (!canonical.startsWith(prootManager.rootfsDir.canonicalPath + File.separator) && canonical != prootManager.rootfsDir.canonicalPath) {
+        throw CodedException("ERR_EACCES", "Path escapes rootfs: $path", null)
+      }
       if (!f.exists() || !f.isDirectory) throw CodedException("ERR_NOENT", "Directory not found: $path", null)
       f.listFiles()?.map { it.name } ?: emptyList()
     }

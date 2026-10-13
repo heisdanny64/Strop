@@ -44,7 +44,8 @@ const withStropManifest = (config) =>
 const withStropSigning = (config) =>
   withAppBuildGradle(config, (config) => {
     if (!config.modResults.contents.includes('STROP_SIGNING')) {
-      config.modResults.contents = config.modResults.contents.replace(
+      const before = config.modResults.contents;
+      config.modResults.contents = before.replace(
         /signingConfigs \{\s*debug \{\s*storeFile file\('debug\.keystore'\)\s*storePassword 'android'\s*keyAlias 'androiddebugkey'\s*keyPassword 'android'\s*\}\s*\}/,
         `// STROP_SIGNING: shared keystore across CI + local builds
         signingConfigs {
@@ -63,6 +64,12 @@ const withStropSigning = (config) =>
             }
         }`
       );
+      if (config.modResults.contents === before) {
+        throw new Error(
+          'withStropBridge: could not find the stock debug signingConfigs block in app/build.gradle; ' +
+            'signing override was not applied. Update the regex in plugins/withStropBridge.js.'
+        );
+      }
     }
     return config;
   });

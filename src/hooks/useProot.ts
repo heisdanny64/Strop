@@ -68,10 +68,15 @@ export function useProot() {
   const start = useCallback(
     async (sessionName?: string) => {
       if (Platform.OS !== 'android') return null;
-      const { default: StropBridge } = await import('../../modules/strop-bridge');
-      const result = await StropBridge.startProot(sessionName ?? null);
-      refresh();
-      return result;
+      try {
+        const { default: StropBridge } = await import('../../modules/strop-bridge');
+        const result = await StropBridge.startProot(sessionName ?? null);
+        refresh();
+        return result;
+      } catch (e: any) {
+        setError(e?.message ?? String(e));
+        return null;
+      }
     },
     [refresh]
   );
@@ -82,6 +87,9 @@ export function useProot() {
       .then(({ default: StropBridge }) => {
         StropBridge.stopProot();
         refresh();
+      })
+      .catch((e: any) => {
+        setError(e?.message ?? String(e));
       });
   }, [refresh]);
 

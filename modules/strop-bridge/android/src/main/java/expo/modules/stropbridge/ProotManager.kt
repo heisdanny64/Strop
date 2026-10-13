@@ -50,6 +50,7 @@ class ProotManager(private val context: Context) {
   val rootfsDir: File get() = File(filesRoot, "rootfs")
   val workspaceDir: File get() = File(rootfsDir, "workspace")
   val tmpDir: File get() = File(rootfsDir, "tmp")
+  val shmDir: File get() = File(rootfsDir, "devshm")
   val cacheDir: File get() = File(context.cacheDir, "proot-tmp")
 
   private val nativeLibDir: File get() = File(context.applicationInfo.nativeLibraryDir)
@@ -58,7 +59,7 @@ class ProotManager(private val context: Context) {
   private val ldLibraryPath: String get() = nativeLibDir.absolutePath
 
   val markerFile: File get() = File(filesRoot, ".tavi-initialized")
-  val isInitialized: Boolean get() = markerFile.exists() && prootBinary.exists() && rootfsDir.exists()
+  val isInitialized: Boolean get() = markerFile.exists() && prootBinary.exists() && rootfsDir.exists() && File(rootfsDir, "usr/bin/bash").exists()
 
   val bootstrapMarkerFile: File get() = File(filesRoot, ".tavi-bootstrap-complete")
   val bootstrapVersionFile: File get() = File(filesRoot, ".tavi-bootstrap-version")
@@ -67,6 +68,11 @@ class ProotManager(private val context: Context) {
   fun markInitialized(rootfsVersion: String = "1") {
     markerFile.writeText("v1")
     rootfsVersionFile.writeText(rootfsVersion)
+  }
+
+  fun clearBootstrapState() {
+    bootstrapMarkerFile.delete()
+    bootstrapVersionFile.delete()
   }
 
   fun isBootstrapped(): Boolean {
@@ -84,20 +90,16 @@ class ProotManager(private val context: Context) {
     rootfsDir.mkdirs()
     workspaceDir.mkdirs()
     tmpDir.mkdirs()
+    shmDir.mkdirs()
     cacheDir.mkdirs()
 
-    // Set sticky bit (1777) on tmp directory
     try {
-      tmpDir.setExecutable(true, false)
-      tmpDir.setReadable(true, false)
-      tmpDir.setWritable(true, false)
-      Runtime.getRuntime().exec(arrayOf("chmod", "1777", tmpDir.absolutePath)).waitFor()
+      Os.chmod(tmpDir.absolutePath, 0b1_111_111_111)
     } catch (e: Exception) {
       Log.w(TAG, "Could not chmod 1777 on tmp dir", e)
     }
 
-    // Create empty selinux dir for binding
-    File(cacheDir, "selinux").mkdirs()
+    File(filesRoot, "selinux-stub").mkdirs()
   }
 
   /**
@@ -132,20 +134,33 @@ class ProotManager(private val context: Context) {
       return false
     }
 
+    rootfsDir.parentFile?.listFiles()?.filter { it.name.startsWith("rootfs.tmp.") }?.forEach { it.deleteRecursively() }
+
     return try {
-      // Extract to temp directory first for atomicity
       val tempRootfs = File(rootfsDir.parentFile, "rootfs.tmp.${System.currentTimeMillis()}")
       tempRootfs.mkdirs()
       extractTarGz(File(tarballPath), tempRootfs)
 
-      // Atomic swap: delete old, rename new
-      rootfsDir.deleteRecursively()
-      tempRootfs.renameTo(rootfsDir)
+      val backupDir = File(rootfsDir.parentFile, "rootfs.old")
+      if (rootfsDir.exists()) {
+        if (!rootfsDir.renameTo(backupDir)) {
+          Log.e(TAG, "Failed to move current rootfs aside")
+          tempRootfs.deleteRecursively()
+          return false
+        }
+      }
 
+      if (!tempRootfs.renameTo(rootfsDir)) {
+        Log.e(TAG, "Failed to rename new rootfs into place, restoring backup")
+        backupDir.renameTo(rootfsDir)
+        tempRootfs.deleteRecursively()
+        return false
+      }
+
+      backupDir.deleteRecursively()
       true
     } catch (e: Exception) {
       Log.e(TAG, "Rootfs extraction failed", e)
-      // Clean up temp dir on failure
       rootfsDir.parentFile?.listFiles()?.filter { it.name.startsWith("rootfs.tmp.") }?.forEach { it.deleteRecursively() }
       false
     }
@@ -370,6 +385,7 @@ class ProotManager(private val context: Context) {
       # 1. apt update (with retry)
       for i in 1 2 3; do
         apt-get update -y && break
+        if [ "${'$'}i" -eq 3 ]; then exit 1; fi
         sleep 2
       done
 
@@ -381,7 +397,7 @@ class ProotManager(private val context: Context) {
       cd /tmp
       NODE_URL="https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-arm64.tar.xz"
       NODE_SHA256="$NODE_SHA256"
-      curl -fsSL "${'$'}NODE_URL" -o node.tar.xz
+      curl -fsSL --retry 3 "${'$'}NODE_URL" -o node.tar.xz
       echo "${'$'}NODE_SHA256  node.tar.xz" | sha256sum -c -
       tar -xJf node.tar.xz -C /usr/local --strip-components=1
       rm node.tar.xz
@@ -401,8 +417,9 @@ class ProotManager(private val context: Context) {
       "DEBIAN_FRONTEND" to "noninteractive"
     )
 
+    var proc: Process? = null
     return try {
-      val proc = ProcessBuilder(cmd)
+      proc = ProcessBuilder(cmd)
         .directory(filesRoot)
         .apply { environment().putAll(env) }
         .redirectErrorStream(true)
@@ -422,13 +439,15 @@ class ProotManager(private val context: Context) {
     } catch (e: Exception) {
       Log.e(TAG, "Bootstrap exception", e)
       false
+    } finally {
+      proc?.destroyForcibly()
     }
   }
 
   fun buildProotCommand(
-  sessionName: String?,
-  fakeRoot: Boolean = true
-): MutableList<String> {
+    sessionName: String?,
+    fakeRoot: Boolean = true
+  ): MutableList<String> {
     // tmux rejects clients whose kernel peer UID differs from the server's getuid().
     // A session server must report the app's real UID; fake root would break that check.
     val uid = Process.myUid()
@@ -499,13 +518,13 @@ class ProotManager(private val context: Context) {
     cmd.add("-b")
     cmd.add("${workspaceDir.absolutePath}:/workspace")
 
-    // /dev/shm bind with sticky bit
+    // /dev/shm bind
     cmd.add("-b")
-    cmd.add("${tmpDir.absolutePath}:/dev/shm")
+    cmd.add("${shmDir.absolutePath}:/dev/shm")
 
     // Hide SELinux from guest
     cmd.add("-b")
-    cmd.add("${cacheDir.absolutePath}/selinux:/sys/fs/selinux")
+    cmd.add("${File(filesRoot, "selinux-stub").absolutePath}:/sys/fs/selinux")
 
     // Clean guest environment: /usr/bin/env -i resets everything inherited from the
     // host (Android's TMPDIR/PROOT_* would break guest tools like mktemp), and proot
@@ -527,10 +546,10 @@ class ProotManager(private val context: Context) {
       // --change-id=0:0) server and a separate proot instance's client compare
       // getuid()=0 against the kernel-reported real app uid -> "access not allowed".
       // A shared explicit socket under /tmp owned by the server process avoids that.
-      val safeName = sessionName.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+      val safeName = sessionName.filter { it.isLetterOrDigit() || it == '-' || it == '_' }.ifEmpty { "default" }
       cmd.add("/bin/sh")
       cmd.add("-c")
-      cmd.add("tmux -S /tmp/tmux-default.sock new-session -d -s '$safeName'; exec bash")
+      cmd.add("tmux -S /tmp/tmux-${safeName}.sock new-session -d -s '$safeName'; exec bash")
     } else {
       // stdin-driven callers (execCommand) need a live shell; callers that
       // append their own /bin/bash -c (bootstrap) ignore this trailing bash.
@@ -580,14 +599,17 @@ class ProotManager(private val context: Context) {
   private fun ensureTallocShim() {
     val link = File(libShimDir, "libtalloc.so.2")
     val target = File(nativeLibDir, "libtalloc.so")
-    // Recreate unconditionally: nativeLibraryDir changes on every app update,
-    // leaving a dangling symlink from the previous install.
     libShimDir.mkdirs()
-    link.delete()
-    if (target.exists()) {
-      Os.symlink(target.absolutePath, link.absolutePath)
-    } else {
-      Log.e(TAG, "libtalloc.so missing from nativeLibraryDir: ${target.absolutePath}")
+    if (link.exists() && !java.nio.file.Files.isSymbolicLink(link.toPath())) {
+      link.delete()
+    }
+    if (!link.exists() || (java.nio.file.Files.isSymbolicLink(link.toPath()) && java.nio.file.Files.readSymbolicLink(link.toPath()).toString() != target.absolutePath)) {
+      link.delete()
+      if (target.exists()) {
+        Os.symlink(target.absolutePath, link.absolutePath)
+      } else {
+        Log.e(TAG, "libtalloc.so missing from nativeLibraryDir: ${target.absolutePath}")
+      }
     }
   }
 }
