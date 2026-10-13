@@ -7,7 +7,6 @@ import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -22,10 +21,10 @@ class StropBridgeModule : Module() {
   private val processes = ConcurrentHashMap<String, Process>()
   @Volatile private var destroyed = false
 
-  private fun Process.getPid(): Int {
+  private fun java.lang.Process.getPid(): Int {
     return try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        this.pid().toInt()
+        (this as Any).javaClass.getMethod("pid").invoke(this) as Int
       } else {
         val f = this.javaClass.getDeclaredField("pid")
         f.isAccessible = true
@@ -64,7 +63,6 @@ class StropBridgeModule : Module() {
     }
 
     AsyncFunction("initialize") Coroutine { rootfsPath: String, rootfsSha256: String, rootfsVersion: String ->
-      Dispatchers.IO
       prootManager.ensureDirectories()
 
       if (prootManager.isInitialized && !prootManager.isRootfsCurrent(rootfsVersion)) {
@@ -86,7 +84,6 @@ class StropBridgeModule : Module() {
     }
 
     AsyncFunction("bootstrap") Coroutine {
-      Dispatchers.IO
       if (!prootManager.isInitialized) {
         throw CodedException("ERR_NOT_INITIALIZED", "Call initialize() first", null)
       }
@@ -112,7 +109,6 @@ class StropBridgeModule : Module() {
     Function("isInitialized") { prootManager.isInitialized }
 
     AsyncFunction("startProot") Coroutine { sessionName: String? ->
-      Dispatchers.IO
       val ctx = appContext.reactContext ?: throw CodedException("ERR_NO_CONTEXT", "React context lost", null)
 
       if (!prootManager.isInitialized) {
@@ -203,7 +199,6 @@ class StropBridgeModule : Module() {
     }
 
     AsyncFunction("execCommand") Coroutine { cmd: String, cwd: String ->
-      Dispatchers.IO
       prootManager.ensureDirectories()
       val wrapped = buildString {
         append("cd ")

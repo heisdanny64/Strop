@@ -417,7 +417,7 @@ class ProotManager(private val context: Context) {
       "DEBIAN_FRONTEND" to "noninteractive"
     )
 
-    var proc: Process? = null
+    var proc: java.lang.Process? = null
     return try {
       proc = ProcessBuilder(cmd)
         .directory(filesRoot)
