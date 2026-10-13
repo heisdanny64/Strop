@@ -79,8 +79,7 @@ class TaviBridgeModule : Module() {
         throw CodedException("ERR_NOT_INITIALIZED", "Call initialize() first", null)
       }
       val ctx = appContext.reactContext ?: throw CodedException("ERR_NO_CONTEXT", "React context lost", null)
-      TaviForegroundService.start(ctx)
-      TaviForegroundService.update(ctx, "Bootstrapping Linux environment...")
+      TaviForegroundService.start(ctx, "Bootstrapping Linux environment...")
 
       val ok = prootManager.bootstrap { line ->
         sendEvent("onBootstrapOutput", mapOf("line" to line))
@@ -114,10 +113,7 @@ class TaviBridgeModule : Module() {
       val env = prootManager.buildEnv() + prootManager.buildProotEnv()
       val proc = ProcessBuilder(cmd)
         .directory(prootManager.filesRoot)
-        .apply {
-          environment().putAll(env)
-          environment().putAll(prootManager.guestEnvOverrides())
-        }
+        .apply { environment().putAll(env) }
         .start()
       processes[key] = proc
       TaviForegroundService.start(ctx)
@@ -170,11 +166,7 @@ class TaviBridgeModule : Module() {
       }
       val env = prootManager.buildEnv() + prootManager.buildProotEnv()
       val pb = ProcessBuilder(prootManager.buildProotCommand(null, includeDefaultShell = false))
-        .apply {
-          environment().putAll(env)
-          // Guest shell must not inherit host paths (PROOT_TMP_DIR, TMPDIR, LD_LIBRARY_PATH)
-          environment().putAll(prootManager.guestEnvOverrides())
-        }
+        .apply { environment().putAll(env) }
         .redirectErrorStream(true)
       val proc = pb.start()
       try {

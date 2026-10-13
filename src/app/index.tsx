@@ -38,10 +38,10 @@ export default function HomeScreen() {
     }
   };
 
-  const copyLogs = async () => {
-    await Clipboard.setStringAsync(proot.bootstrapProgress.join('\n'));
+  const copyLogs = async (text: string = proot.bootstrapProgress.join('\n')) => {
+    await Clipboard.setStringAsync(text);
     setCopied(true);
-    ToastAndroid.show('Logs copied to clipboard', ToastAndroid.SHORT);
+    ToastAndroid.show('Copied to clipboard', ToastAndroid.SHORT);
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -69,6 +69,18 @@ export default function HomeScreen() {
               {'\n'}
               sessions: {proot.status?.sessions.length ? proot.status.sessions.join(', ') : 'none'}
             </ThemedText>
+            <TestButton
+              label="Copy Status"
+              onPress={() =>
+                copyLogs(
+                  [
+                    `initialized: ${String(proot.initialized)}`,
+                    `proot running: ${proot.status?.running ? 'yes' : 'no'}`,
+                    `sessions: ${proot.status?.sessions.length ? proot.status.sessions.join(', ') : 'none'}`,
+                  ].join('\n')
+                )
+              }
+            />
             {proot.error && (
               <ThemedText type="small" style={styles.error}>
                 {proot.error}
@@ -135,9 +147,15 @@ export default function HomeScreen() {
             />
             {executing && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
             {execResult && (
-              <ScrollView style={styles.log} horizontal showsHorizontalScrollIndicator={false}>
-                <ThemedText type="code">{execResult}</ThemedText>
-              </ScrollView>
+              <>
+                <ScrollView style={styles.log} horizontal showsHorizontalScrollIndicator={false}>
+                  <ThemedText type="code">{execResult}</ThemedText>
+                </ScrollView>
+                <TestButton
+                  label={copied ? 'Copied!' : 'Copy Output'}
+                  onPress={() => copyLogs(execResult)}
+                />
+              </>
             )}
           </ThemedView>
 

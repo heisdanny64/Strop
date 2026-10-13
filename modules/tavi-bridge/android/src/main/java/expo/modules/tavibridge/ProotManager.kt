@@ -549,6 +549,9 @@ class ProotManager(private val context: Context) {
   /**
    * Host-side env for ProcessBuilder: a sane baseline the guest clean-env
    * command (/usr/bin/env -i) does not inherit directly, but PRoot itself may use.
+   * LD_LIBRARY_PATH here is required — proot links libtalloc.so.2 via the shim dir.
+   * Guest cleanliness is handled entirely by /usr/bin/env -i; do NOT blank these
+   * vars in the ProcessBuilder env or proot itself fails to link.
    */
   fun buildEnv(): Map<String, String> {
     return mapOf(
@@ -556,24 +559,6 @@ class ProotManager(private val context: Context) {
       "PATH" to "/usr/local/bin:/usr/bin:/bin",
       "TERM" to "xterm-256color",
       "LANG" to "C.UTF-8",
-      "TMPDIR" to "/tmp"
-    )
-  }
-
-  /**
-   * Overrides applied to the ProcessBuilder environment to mask host Android
-   * vars that would otherwise leak into the guest (PROOT_TMP_DIR points outside
-   * the rootfs, breaking mktemp in package postinst scripts; host LD_LIBRARY_PATH
-   * breaks guest binaries). PRoot reads its own config from buildProotEnv() before
-   * these take effect on the guest side.
-   */
-  fun guestEnvOverrides(): Map<String, String> {
-    return mapOf(
-      "PROOT_TMP_DIR" to "",
-      "PROOT_LOADER" to "",
-      "PROOT_LOADER_32" to "",
-      "PROOT_NO_SECCOMP" to "",
-      "LD_LIBRARY_PATH" to "",
       "TMPDIR" to "/tmp"
     )
   }
