@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 class StropForegroundService : Service() {
   companion object {
     const val CHANNEL_ID = "strop-proot"
+    private const val LEGACY_CHANNEL_ID = "tavi-proot"
     const val NOTIFICATION_ID = 1001
     const val KEY_MESSAGE = "expo.modules.stropbridge.EXTRA_MESSAGE"
 
@@ -34,6 +35,7 @@ class StropForegroundService : Service() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val channel = NotificationChannel(CHANNEL_ID, "Linux environment", NotificationManager.IMPORTANCE_LOW)
       val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
       manager.createNotificationChannel(channel)
     }
   }

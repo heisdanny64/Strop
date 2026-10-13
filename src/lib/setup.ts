@@ -49,7 +49,7 @@ async function downloadIfMissing(
   const dest = new File(destDir, asset.fileName);
   if (dest.exists) {
     onProgress({ stage: 'verifying', message: `Verifying ${asset.fileName}` });
-    const hash = StropBridge.sha256(uriToPath(dest.uri));
+    const hash = await StropBridge.sha256(uriToPath(dest.uri));
     if (hash.toLowerCase() === asset.sha256) return dest;
     // Corrupt or stale file — delete and re-download
     dest.delete();
@@ -68,15 +68,6 @@ async function downloadIfMissing(
   try {
     const result = await task.downloadAsync();
     if (!result) throw new Error(`Download failed or cancelled: ${asset.fileName}`);
-    onProgress({ stage: 'verifying', message: `Verifying ${asset.fileName}` });
-    const actual = StropBridge.sha256(uriToPath(dest.uri));
-    if (actual.toLowerCase() !== asset.sha256) {
-      dest.delete();
-      throw new Error(
-        `Checksum mismatch for ${asset.fileName}: expected ${asset.sha256}, got ${actual}. ` +
-        `The download may be corrupted or tampered with. Deleted and aborted.`
-      );
-    }
     return dest;
   } finally {
     task.release();

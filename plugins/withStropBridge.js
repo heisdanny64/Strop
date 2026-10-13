@@ -70,6 +70,13 @@ const withStropSigning = (config) =>
             'signing override was not applied. Update the regex in plugins/withStropBridge.js.'
         );
       }
+      // Warn if CI secrets are missing so debug builds still work but CI fails loudly
+      const hasSecrets = process.env.STROP_KEYSTORE_PATH && process.env.STROP_KEYSTORE_PASSWORD &&
+        process.env.STROP_KEY_ALIAS && process.env.STROP_KEY_PASSWORD;
+      if (!hasSecrets) {
+        console.warn('withStropBridge: STROP_* signing env vars not set — using local debug keystore. ' +
+          'Set STROP_KEYSTORE_PATH, STROP_KEYSTORE_PASSWORD, STROP_KEY_ALIAS, STROP_KEY_PASSWORD for CI.');
+      }
     }
     return config;
   });

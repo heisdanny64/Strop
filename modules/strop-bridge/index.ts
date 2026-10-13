@@ -21,10 +21,12 @@ type BootstrapOutput = {
 };
 
 declare class StropBridgeModule extends EventEmitter<StropBridgeEvents> {
-  sha256(path: string): string;
+  sha256(path: string): Promise<string>;
   initialize(rootfsPath: string, rootfsSha256: string, rootfsVersion: string): Promise<boolean>;
   bootstrap(): Promise<boolean>;
   isInitialized(): boolean;
+  isBootstrapped(): boolean;
+  readBootstrapLog(): string[];
   startProot(sessionName?: string | null): Promise<StartResult>;
   stopProot(): boolean;
   getProotStatus(): ProotStatus;
@@ -38,9 +40,6 @@ type StropBridgeEvents = {
   onBootstrapOutput: (data: { line: string }) => void;
   onProotStarted: (data: { sessionName: string; pid: number }) => void;
   onProotStopped: (data: { sessionName: string; exitCode: number }) => void;
-  onProotError: (data: { error: string }) => void;
-  onSessionOutput: (data: { sessionName: string; output: string }) => void;
-  onSessionExited: (data: { sessionName: string; exitCode: number }) => void;
 } & Record<string, (data: any) => void>;
 
 export default requireNativeModule<StropBridgeModule>('StropBridge');

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  PermissionsAndroid,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,7 +29,10 @@ export default function HomeScreen() {
   const palette = Colors[scheme];
 
   useEffect(() => {
-    // TODO: request POST_NOTIFICATIONS permission on Android when needed
+    // Request POST_NOTIFICATIONS on Android 13+ so the foreground service notification appears
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,6 +87,8 @@ export default function HomeScreen() {
             <ThemedText type="code">
               initialized: {String(proot.initialized)}
               {'\n'}
+              bootstrapped: {String(proot.bootstrapped)}
+              {'\n'}
               proot running: {proot.status?.running ? 'yes' : 'no'}
               {'\n'}
               sessions: {proot.status?.sessions.length ? proot.status.sessions.join(', ') : 'none'}
@@ -92,6 +99,7 @@ export default function HomeScreen() {
                 copyLogs(
                   [
                     `initialized: ${String(proot.initialized)}`,
+                    `bootstrapped: ${String(proot.bootstrapped)}`,
                     `proot running: ${proot.status?.running ? 'yes' : 'no'}`,
                     `sessions: ${proot.status?.sessions.length ? proot.status.sessions.join(', ') : 'none'}`,
                   ].join('\n')
@@ -212,7 +220,7 @@ export default function HomeScreen() {
               onPress={() => proot.stop()}
             />
             <ThemedText type="small">
-              Foreground service starts with the session; notification permission not yet requested at runtime.
+              Foreground service starts with the session; POST_NOTIFICATIONS requested at startup.
             </ThemedText>
           </ThemedView>
         </ScrollView>

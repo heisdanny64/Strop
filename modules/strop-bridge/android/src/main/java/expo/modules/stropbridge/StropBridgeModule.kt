@@ -7,6 +7,8 @@ import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -50,16 +52,18 @@ class StropBridgeModule : Module() {
       processes.clear()
     }
 
-    Function("sha256") { path: String ->
-      val digest = java.security.MessageDigest.getInstance("SHA-256")
-      java.io.FileInputStream(path).use { fis ->
-        val buffer = ByteArray(65536)
-        var read: Int
-        while (fis.read(buffer).also { read = it } != -1) {
-          digest.update(buffer, 0, read)
+    AsyncFunction("sha256") Coroutine { path: String ->
+      withContext(Dispatchers.IO) {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        java.io.FileInputStream(path).use { fis ->
+          val buffer = ByteArray(65536)
+          var read: Int
+          while (fis.read(buffer).also { read = it } != -1) {
+            digest.update(buffer, 0, read)
+          }
         }
+        digest.digest().joinToString("") { "%02x".format(it) }
       }
-      digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     AsyncFunction("initialize") Coroutine { rootfsPath: String, rootfsSha256: String, rootfsVersion: String ->
@@ -73,8 +77,8 @@ class StropBridgeModule : Module() {
       if (!extracted) {
         throw CodedException(
           "ERR_ROOTFS_EXTRACT",
-          "Rootfs extraction failed (SHA256 verified OK before extraction). " +
-            "Check proot logs for details.",
+          "Rootfs extraction failed (checksum mismatch or extraction error). " +
+            "Check logs for details.",
           null
         )
       }
@@ -107,6 +111,10 @@ class StropBridgeModule : Module() {
     }
 
     Function("isInitialized") { prootManager.isInitialized }
+
+    Function("isBootstrapped") { prootManager.isBootstrapped() }
+
+    Function("readBootstrapLog") { prootManager.readBootstrapLog() }
 
     AsyncFunction("startProot") Coroutine { sessionName: String? ->
       val ctx = appContext.reactContext ?: throw CodedException("ERR_NO_CONTEXT", "React context lost", null)

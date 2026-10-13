@@ -13,6 +13,7 @@ export function useProot() {
   const [setupProgress, setSetupProgress] = useState<SetupProgress | null>(null);
   const [bootstrapProgress, setBootstrapProgress] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const [bootstrapped, setBootstrapped] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export function useProot() {
     try {
       const { default: StropBridge } = await import('../../modules/strop-bridge');
       await StropBridge.bootstrap();
+      setBootstrapped(true);
       return true;
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -96,6 +98,12 @@ export function useProot() {
   useEffect(() => {
     const t = setTimeout(refresh, 0);
     isEnvironmentReady().then(setInitialized);
+    import('../../modules/strop-bridge')
+      .then(({ default: StropBridge }) => {
+        setBootstrapped(StropBridge.isBootstrapped());
+        setBootstrapProgress(StropBridge.readBootstrapLog());
+      })
+      .catch(() => {});
     let sub1: { remove: () => void } | null = null;
     let sub2: { remove: () => void } | null = null;
     let sub3: { remove: () => void } | null = null;
@@ -104,7 +112,7 @@ export function useProot() {
       .then(({ default: StropBridge }) => {
         if (cancelled) return;
         sub1 = StropBridge.addListener?.('onBootstrapOutput', (evt: { line: string }) => {
-          setBootstrapProgress((prev) => [...prev.slice(-500), evt.line]);
+          setBootstrapProgress((prev) => [...prev, evt.line]);
         }) ?? null;
         sub2 = StropBridge.addListener?.('onProotStarted', () => {
           refresh();
@@ -127,6 +135,7 @@ export function useProot() {
     status,
     setupProgress,
     initialized,
+    bootstrapped,
     bootstrapProgress,
     initializing,
     bootstrapping,

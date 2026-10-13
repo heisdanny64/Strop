@@ -130,6 +130,14 @@
 - [ ] **Terminal Preferences:** Font family, font size, default shell, scrollback buffer size.
 - [ ] **Skills & MCP Servers:** Add custom tool endpoints and agent prompt personalizations.
 
+### Phase 8: Cleanup & Polishing
+- [ ] Rename Android `applicationId` from `dev.tavi.app` to a Strop identifier (`app.json:14`). This is a new install identity, so plan the migration.
+- [ ] Rename CI signing secrets from `TAVI_*` to `STROP_*` in `.github/workflows/android-build.yml` (secret names, `missing+=` checks, and the `tavi.jks` temp keystore path). Update the GitHub repository secrets to match.
+- [ ] Rename on-device marker files `.tavi-*` in `ProotManager.kt` (`.tavi-initialized`, `.tavi-bootstrap-complete`, `.tavi-bootstrap-version`, `.tavi-rootfs-version`). Renaming forces a one-time re-initialize and re-bootstrap on existing installs.
+- [ ] Rename the setup cache directory `tavi-setup` to `strop-setup` in `src/lib/setup.ts:94`.
+- [ ] Remove the legacy `tavi-proot` notification channel cleanup in `StropForegroundService.kt` once no installs still carry it.
+- [ ] Review user-facing copy, comments, and docs for remaining "Tavi" references (`git grep -i tavi`).
+
 ---
 
 ## 4. Verification & Testing Strategy

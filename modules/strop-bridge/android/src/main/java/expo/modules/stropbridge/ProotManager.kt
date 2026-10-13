@@ -64,6 +64,10 @@ class ProotManager(private val context: Context) {
   val bootstrapMarkerFile: File get() = File(filesRoot, ".tavi-bootstrap-complete")
   val bootstrapVersionFile: File get() = File(filesRoot, ".tavi-bootstrap-version")
   val rootfsVersionFile: File get() = File(filesRoot, ".tavi-rootfs-version")
+  val bootstrapLogFile: File get() = File(filesRoot, "bootstrap.log")
+
+  fun readBootstrapLog(): List<String> =
+    if (bootstrapLogFile.exists()) bootstrapLogFile.readLines() else emptyList()
 
   fun markInitialized(rootfsVersion: String = "1") {
     markerFile.writeText("v1")
@@ -251,7 +255,15 @@ class ProotManager(private val context: Context) {
 
   private fun safeTarget(root: File, relName: String): File {
     if (relName.split('/').any { it == ".." }) throw IOException("Unsafe tar path: $relName")
-    return File(root, relName)
+
+    val target = File(root, relName)
+    val parent = target.parentFile ?: return target
+    val canonicalRoot = root.canonicalFile
+    val canonicalParent = parent.canonicalFile
+    val inside = canonicalParent == canonicalRoot ||
+      canonicalParent.absolutePath.startsWith(canonicalRoot.absolutePath + File.separator)
+    if (!inside) throw IOException("Symlink escape detected: $relName")
+    return target
   }
 
   private fun parsePax(data: ByteArray): Map<String, String> {
@@ -361,13 +373,21 @@ class ProotManager(private val context: Context) {
   }
 
   fun bootstrap(onOutput: (String) -> Unit): Boolean {
-    // NEW: ensure all directories exist before building the PRoot command
-    // (cacheDir can be cleared by Android between sessions, leaving the selinux bind target missing)
+    // cacheDir can be cleared by Android between sessions, leaving the selinux bind target missing
     ensureDirectories()
+    bootstrapLogFile.writeText("")
 
-    // Check if already bootstrapped
+    fun emit(line: String) {
+      try {
+        bootstrapLogFile.appendText(line + "\n")
+      } catch (e: IOException) {
+        Log.w(TAG, "Could not write bootstrap log", e)
+      }
+      onOutput(line)
+    }
+
     if (isBootstrapped()) {
-      onOutput("Bootstrap already complete (version $BOOTSTRAP_VERSION)")
+      emit("Bootstrap already complete (version $BOOTSTRAP_VERSION)")
       return true
     }
 
@@ -379,7 +399,7 @@ class ProotManager(private val context: Context) {
       export HOME=/root
       # Guest must not see host PRoot env vars (PROOT_TMP_DIR points outside the rootfs,
       # breaking mktemp in package postinst scripts)
-      unset PROOT_TMP_DIR PROOT_LOADER PROOT_LOADER_32 PROOT_NO_SECCOMP LD_LIBRARY_PATH || true
+      unset PROOT_TMP_DIR PROOT_LOADER PROOT_LOADER_32 PROOT_NO_SECCOMP LD_LIBRARY_PATH
       export TMPDIR=/tmp
 
       # 1. apt update (with retry)
@@ -425,19 +445,21 @@ class ProotManager(private val context: Context) {
         .redirectErrorStream(true)
         .start()
 
-      proc.inputStream.bufferedReader().useLines { lines -> lines.forEach(onOutput) }
+      proc.inputStream.bufferedReader().useLines { lines -> lines.forEach { emit(it) } }
       val exit = proc.waitFor()
       if (exit != 0) {
         Log.e(TAG, "Bootstrap failed with exit code $exit")
+        emit("Bootstrap failed with exit code $exit")
         return false
       }
 
-      // Mark bootstrap as complete
       bootstrapMarkerFile.writeText("complete")
       bootstrapVersionFile.writeText(BOOTSTRAP_VERSION)
+      emit("Bootstrap complete")
       true
     } catch (e: Exception) {
       Log.e(TAG, "Bootstrap exception", e)
+      emit("Bootstrap exception: ${e.message}")
       false
     } finally {
       proc?.destroyForcibly()
