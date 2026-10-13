@@ -7,9 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -17,15 +15,12 @@ class TaviForegroundService : Service() {
   companion object {
     const val CHANNEL_ID = "tavi-proot"
     const val NOTIFICATION_ID = 1001
+    const val KEY_MESSAGE = "expo.modules.tavibridge.EXTRA_MESSAGE"
 
-    fun start(context: Context, message: String = "Linux environment running") {
+    fun start(context: Context, message: String) {
       val intent = Intent(context, TaviForegroundService::class.java)
+        .putExtra(KEY_MESSAGE, message)
       context.startForegroundService(intent)
-      val notification = buildNotification(message)
-      // startForeground must run on the main thread and immediately after
-      // startForegroundService, or Android 14/15 throws
-      // ForegroundServiceDidNotStartInTimeException.
-      Handler(Looper.getMainLooper()).post { context.startForeground(NOTIFICATION_ID, notification) }
     }
 
     fun stop(context: Context) {
@@ -43,22 +38,24 @@ class TaviForegroundService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    // If the system restarted this service, promote it back to the foreground.
-    Handler(Looper.getMainLooper()).post {
-      val notification = buildNotification("Linux environment running")
-      context.startForeground(NOTIFICATION_ID, notification)
-    }
-    return START_STICKY
-  }
+    val message = intent?.getStringExtra(KEY_MESSAGE) ?: "Linux environment running"
 
-  private fun buildNotification(message: String): Notification {
-    return NotificationCompat.Builder(this, CHANNEL_ID)
+    val notification = NotificationCompat.Builder(this, CHANNEL_ID)
       .setContentTitle("Strop")
       .setContentText(message)
       .setSmallIcon(android.R.drawable.stat_notify_sync)
       .setOngoing(true)
       .setPriority(NotificationManagerCompat.IMPORTANCE_MIN)
       .build()
+
+    // Called synchronously on the main thread — Android requires this
+    // within ~5s of startForegroundService(), or it throws.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+      startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+    } else {
+      startForeground(NOTIFICATION_ID, notification)
+    }
+    return START_STICKY
   }
 
   override fun onBind(intent: Intent?): IBinder? = null
