@@ -116,7 +116,7 @@ class TaviBridgeModule : Module() {
         .apply { environment().putAll(env) }
         .start()
       processes[key] = proc
-      TaviForegroundService.start(ctx)
+      TaviForegroundService.start(ctx, "Linux session: ${sessionName ?: "default"}")
 
       sendEvent(
         "onProotStarted",
