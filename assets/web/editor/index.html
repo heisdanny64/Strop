@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Strop Editor</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--editor-bg, #0d1117);
+      }
+      #cm-editor {
+        height: 100%;
+        width: 100%;
+        font-size: 14px;
+      }
+      .cm-editor {
+        height: 100%;
+      }
+      .cm-scroller {
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cm-editor"></div>
+    <script src="./editor.js"></script>
+  </body>
+</html>
