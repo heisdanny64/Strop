@@ -56,6 +56,9 @@ jobs:
       - name: Install dependencies (post-prebuild)
         run: npm ci
 
+      - name: Build offline editor bundle
+        run: npm run build:editor
+
       - name: Build APK
         env:
           STROP_KEYSTORE_PATH: ${{ runner.temp }}/tavi.jks

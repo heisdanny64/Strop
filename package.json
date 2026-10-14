@@ -52,7 +52,8 @@
   "scripts": {
     "prestart": "node scripts/build-editor.mjs",
     "preandroid": "node scripts/build-editor.mjs",
-    "postinstall": "node scripts/build-editor.mjs --minify",
+    "build:editor": "node scripts/build-editor.mjs --minify",
+    "eas-build-post-install": "node scripts/build-editor.mjs --minify",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",

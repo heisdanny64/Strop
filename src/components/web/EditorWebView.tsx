@@ -1,16 +1,11 @@
-import { Asset } from "expo-asset";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { Colors } from "@/constants/theme";
+import { EDITOR_HTML } from "@/generated/editorHtml";
 
-type EditorBridge = {
-  openFile(path: string, content: string): void;
-  saveFile(): Promise<{ path: string; text: string }>;
-  onContentChange(cb: (text: string) => void): void;
-  setTheme(name: "dark" | "light"): void;
-};
+const EDITOR_SOURCE = { html: EDITOR_HTML };
 
 export function EditorWebView({
   path = "untitled.js",
@@ -25,10 +20,16 @@ export function EditorWebView({
   onSave?: (result: { path: string; text: string }) => void;
   theme?: "dark" | "light";
 }) {
-  const bridgeRef = useRef<EditorBridge | null>(null);
   const changeCbRef = useRef(onChange);
   const saveCbRef = useRef(onSave);
   const webViewRef = useRef<WebView>(null);
+  const [loadKey, setLoadKey] = useState(0);
+  const [ready, setReady] = useState(false);
+  const latest = useRef({ path, initialContent, theme });
+
+  useEffect(() => {
+    latest.current = { path, initialContent, theme };
+  }, [path, initialContent, theme]);
 
   useEffect(() => {
     changeCbRef.current = onChange;
@@ -38,52 +39,56 @@ export function EditorWebView({
     saveCbRef.current = onSave;
   }, [onSave]);
 
-  const editorUrl = Asset.fromModule(
-    require("../../../assets/web/editor/index.html")
-  ).uri;
-
-  const handleMessage = useCallback(
-    (_event: WebViewMessageEvent) => {
-      // Bridge messages handled via onLoadEnd polling
-    },
-    []
-  );
+  const syncEditor = useCallback((fields: "all" | "theme") => {
+    const { path: p, initialContent: c, theme: t } = latest.current;
+    const body =
+      fields === "all"
+        ? `bridge.openFile(${JSON.stringify(p)}, ${JSON.stringify(c)}); bridge.setTheme(${JSON.stringify(t)});`
+        : `bridge.setTheme(${JSON.stringify(t)});`;
+    webViewRef.current?.injectJavaScript(
+      `(function () { var bridge = window.StropEditorBridge; if (bridge) { ${body} } })(); true;`
+    );
+  }, []);
 
   const handleLoadEnd = useCallback(() => {
-    const checkBridge = setInterval(() => {
-      if (bridgeRef.current) {
-        clearInterval(checkBridge);
-        bridgeRef.current.openFile(path, initialContent);
-        bridgeRef.current.setTheme(theme);
-      }
-    }, 50);
-    setTimeout(() => clearInterval(checkBridge), 5000);
-  }, [path, initialContent, theme]);
+    setReady(true);
+    syncEditor("all");
+  }, [syncEditor]);
+
+  const handleRenderProcessGone = useCallback(() => {
+    setReady(false);
+    setLoadKey((k) => k + 1);
+  }, []);
+
+  const handleMessage = useCallback((_event: WebViewMessageEvent) => {}, []);
+
+  useEffect(() => {
+    if (ready) syncEditor("all");
+  }, [path, initialContent, ready, syncEditor]);
+
+  useEffect(() => {
+    if (ready) syncEditor("theme");
+  }, [theme, ready, syncEditor]);
+
+  const containerStyle = useMemo(
+    () => [styles.webview, { backgroundColor: theme === "dark" ? Colors.dark.background : Colors.light.background }],
+    [theme]
+  );
 
   return (
     <View style={styles.container}>
       <WebView
+        key={loadKey}
         ref={webViewRef}
-        source={{ uri: editorUrl }}
+        source={EDITOR_SOURCE}
         onMessage={handleMessage}
         onLoadEnd={handleLoadEnd}
-        style={[styles.webview, { backgroundColor: theme === "dark" ? Colors.dark.background : Colors.light.background }]}
+        onRenderProcessGone={handleRenderProcessGone}
+        onContentProcessDidTerminate={handleRenderProcessGone}
+        style={containerStyle}
         sharedCookiesEnabled={false}
         javaScriptEnabled
         domStorageEnabled
-        allowFileAccess
-        allowUniversalAccessFromFileURLs
-        injectedJavaScript={`
-          (function() {
-            var check = setInterval(function() {
-              if (window.StropEditorBridge) {
-                clearInterval(check);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'bridgeReady' }));
-              }
-            }, 50);
-          })();
-          true;
-        `}
       />
     </View>
   );
