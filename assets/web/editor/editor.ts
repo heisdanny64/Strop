@@ -30,15 +30,20 @@ function detectLanguage(path: string) {
   return javascript();
 }
 
+function post(msg: Record<string, unknown>) {
+  const rn = (window as any).ReactNativeWebView;
+  if (rn && typeof rn.postMessage === "function") {
+    rn.postMessage(JSON.stringify(msg));
+  } else {
+    window.parent.postMessage(msg, "*");
+  }
+}
+
 function boot() {
   const target = document.getElementById("cm-editor");
   if (!target) throw new Error("missing #cm-editor element");
 
   let currentPath = "untitled.js";
-  let isSaving = false;
-  const onChanges: Array<(text: string) => void> = [];
-
-  const doc = (): string => state.doc.toString();
 
   const state = EditorState.create({
     doc: "",
@@ -51,16 +56,7 @@ function boot() {
       keymap.of(defaultKeymap),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
-          const text = update.state.doc.toString();
-          for (const cb of onChanges) cb(text);
-        }
-      }),
-      EditorView.updateListener.of((update) => {
-        if (update.viewportChanged) {
-          window.parent.postMessage(
-            { type: "viewport", top: update.view.scrollDOM.scrollTop },
-            "*"
-          );
+          post({ type: "contentChange", text: update.state.doc.toString() });
         }
       }),
     ],
@@ -78,21 +74,10 @@ function boot() {
         changes: { from: 0, to: view.state.doc.length, insert: content },
         effects: languageCompartment.reconfigure(detectLanguage(path)),
       });
-      window.parent.postMessage(
-        { type: "openFile", path: currentPath, text: content },
-        "*"
-      );
+      post({ type: "openFile", path: currentPath, text: content });
     },
-    saveFile(): Promise<{ path: string; text: string }> {
-      if (isSaving) return Promise.reject(new Error("already saving"));
-      isSaving = true;
-      return Promise.resolve({ path: currentPath, text: doc() }).finally(() => {
-        isSaving = false;
-      });
-    },
-    onContentChange(cb: (text: string) => void): void {
-      onChanges.push(cb);
-      cb(doc());
+    saveFile(): void {
+      post({ type: "saveFile", path: currentPath, text: view.state.doc.toString() });
     },
     setTheme(name: "dark" | "light"): void {
       view.dispatch({

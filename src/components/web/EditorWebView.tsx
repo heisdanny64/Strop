@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
@@ -7,19 +7,26 @@ import { EDITOR_HTML } from "@/generated/editorHtml";
 
 const EDITOR_SOURCE = { html: EDITOR_HTML };
 
-export function EditorWebView({
-  path = "untitled.js",
-  initialContent = "",
-  onChange,
-  onSave,
-  theme = "dark",
-}: {
-  path?: string;
-  initialContent?: string;
-  onChange?: (text: string) => void;
-  onSave?: (result: { path: string; text: string }) => void;
-  theme?: "dark" | "light";
-}) {
+export type EditorWebViewRef = {
+  save(): void;
+};
+
+export const EditorWebView = forwardRef(function EditorWebView(
+  {
+    path = "untitled.js",
+    initialContent = "",
+    onChange,
+    onSave,
+    theme = "dark",
+  }: {
+    path?: string;
+    initialContent?: string;
+    onChange?: (text: string) => void;
+    onSave?: (result: { path: string; text: string }) => void;
+    theme?: "dark" | "light";
+  },
+  ref: React.Ref<EditorWebViewRef>
+) {
   const changeCbRef = useRef(onChange);
   const saveCbRef = useRef(onSave);
   const webViewRef = useRef<WebView>(null);
@@ -38,6 +45,14 @@ export function EditorWebView({
   useEffect(() => {
     saveCbRef.current = onSave;
   }, [onSave]);
+
+  useImperativeHandle(ref, () => ({
+    save() {
+      webViewRef.current?.injectJavaScript(
+        `(function(){var b=window.StropEditorBridge;if(b)b.saveFile();})();true;`
+      );
+    },
+  }));
 
   const syncEditor = useCallback((fields: "all" | "theme") => {
     const { path: p, initialContent: c, theme: t } = latest.current;
@@ -60,7 +75,16 @@ export function EditorWebView({
     setLoadKey((k) => k + 1);
   }, []);
 
-  const handleMessage = useCallback((_event: WebViewMessageEvent) => {}, []);
+  const handleMessage = useCallback((event: WebViewMessageEvent) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === "contentChange") {
+        changeCbRef.current?.(msg.text);
+      } else if (msg.type === "saveFile") {
+        saveCbRef.current?.({ path: msg.path, text: msg.text });
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (ready) syncEditor("all");
@@ -92,7 +116,7 @@ export function EditorWebView({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

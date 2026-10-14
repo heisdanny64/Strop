@@ -59,9 +59,10 @@
 - [x] Test command execution and verify `tmux` session persistence.
 
 ### Phase 2: WebViews & Editor/Terminal Infrastructure
-- [ ] Create pre-bundled, offline CodeMirror 6 build:
-  - File buffer management, syntax highlighting, bracket matching, autocomplete.
-  - Bridge methods: `openFile(path, content)`, `saveFile()`, `onContentChange()`, `setTheme()`.
+- [x] Create pre-bundled, offline CodeMirror 6 build:
+  - [x] File buffer management, syntax highlighting, bracket matching, autocomplete.
+  - [x] Bridge methods (outbound): `openFile(path, content)`, `setTheme()`.
+  - [ ] Bridge methods (inbound): `saveFile()`, `onContentChange()`.
 - [ ] Build the mobile **Coding Key Strip**:
   - Horizontal scrollable accessory bar: `Tab`, `Ctrl`, `Esc`, `{`, `}`, `[`, `]`, `(`, `)`, `;`, `"`, `'`, `/`, `\`, `|`, `~`, arrow keys.
   - Keyboard focus and insertion event dispatch to CodeMirror.
