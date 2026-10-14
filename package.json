@@ -44,11 +44,15 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "prestart": "node scripts/build-editor.mjs",
+    "preandroid": "node scripts/build-editor.mjs",
+    "postinstall": "node scripts/build-editor.mjs --minify",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
@@ -61,5 +65,9 @@
     "eas:build:preview": "npx eas-cli@latest build -p android --profile preview",
     "eas:build:prod": "npx eas-cli@latest build -p android --profile production"
   },
-  "private": true
+  "private": true,
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true
+  }
 }
